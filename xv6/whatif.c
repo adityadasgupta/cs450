@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
           write(prnt, buf, strlen(buf));    //writes to parent.txt
           wait();                           //waits for child process to finish before going to next line
         }
-
+	
     }
     exit();
 }

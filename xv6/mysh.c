@@ -23,7 +23,7 @@ struct cmd {
 
 struct execcmd {
   int type;
-  char *argv[MAXARGS];
+  char *argv[MAXARGS];  //the array of strings entered at the prompt
   char *eargv[MAXARGS];
 };
 
@@ -53,8 +53,10 @@ struct backcmd {
   struct cmd *cmd;
 };
 
-struct noncmd {
+struct noncmd {     //nonohup command struct
     int type;
+    int argc;
+    struct cmd *cmd;
 };
 
 int fork1(void);  // Fork but panics on failure.
@@ -79,6 +81,8 @@ runcmd(struct cmd *cmd)
   default:
     panic("runcmd");        //if illegal type, then print runcmd
 
+  //case NONOHUP:
+    //continue;
   case EXEC:
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
@@ -129,8 +133,8 @@ runcmd(struct cmd *cmd)
     wait();
     break;
 
-  case BACK:
-    bcmd = (struct backcmd*)cmd;
+  case BACK:        //case background 
+    bcmd = (struct backcmd*)cmd;    //casts the cmd into a backcmd type with an int type and struct cmd *cmd. 
     if(fork1() == 0)
       runcmd(bcmd->cmd);
     break;
@@ -348,7 +352,7 @@ parsecmd(char *s)
 }
 
 struct cmd*
-parseline(char **ps, char *es)
+parseline(char **ps, char *es)      //in parseline, we check for "&"->the background cmd.
 {
   struct cmd *cmd;
 
@@ -361,6 +365,9 @@ parseline(char **ps, char *es)
     gettoken(ps, es, 0, 0);
     cmd = listcmd(cmd, parseline(ps, es));
   }
+ /* if(strcmp(ps[0],"nonohup")) {
+
+    }*/
   return cmd;
 }
 
