@@ -44,8 +44,8 @@ struct pipecmd {
 
 struct listcmd {
   int type;
-  struct cmd *left;
-  struct cmd *right;
+  struct cmd *left;     //left of the ;
+  struct cmd *right;    //right of the ;
 };
 
 struct backcmd {
@@ -53,11 +53,11 @@ struct backcmd {
   struct cmd *cmd;
 };
 
-struct noncmd {     //nonohup command struct
+/*struct noncmd {     //nonohup command struct
     int type;
     int argc;
     struct cmd *cmd;
-};
+};*/
 
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
@@ -81,14 +81,13 @@ runcmd(struct cmd *cmd)
   default:
     panic("runcmd");        //if illegal type, then print runcmd
 
-  //case NONOHUP:
-    //continue;
+  
   case EXEC:
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
     exec(ecmd->argv[0], ecmd->argv);
-    printf(2, "exec %s failed\n", ecmd->argv[0]);
+    printf(2, "exec %s failed\n", ecmd->argv[0]);       //this is where commands fail
     break;
 
   case REDIR:
@@ -133,12 +132,17 @@ runcmd(struct cmd *cmd)
     wait();
     break;
 
+  
+
   case BACK:        //case background 
     bcmd = (struct backcmd*)cmd;    //casts the cmd into a backcmd type with an int type and struct cmd *cmd. 
     if(fork1() == 0)
       runcmd(bcmd->cmd);
     break;
+  
+  case NONOHUP: break;
   }
+  
   exit();
 }
 
@@ -146,8 +150,8 @@ int
 getcmd(char *buf, int nbuf)
 {
   printf(2, "$S20 ");   //the shell prompt
-  memset(buf, 0, nbuf);
-  gets(buf, nbuf);
+  memset(buf, 0, nbuf); //fills buf with nbuf 0's
+  gets(buf, nbuf);  //fills buf with whatever is in stdin, if not then it still remains as nbuf 0's
   if(buf[0] == 0) // EOF
     return -1;
   return 0;
@@ -175,8 +179,8 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-    if(fork1() == 0)        //otherwise run runcmd
-      runcmd(parsecmd(buf));
+    if(fork1() == 0) {       //otherwise run runcmd
+      runcmd(parsecmd(buf));}       //
     wait();
   }
   exit();
@@ -244,7 +248,7 @@ pipecmd(struct cmd *left, struct cmd *right)
 }
 
 struct cmd*
-listcmd(struct cmd *left, struct cmd *right)
+listcmd(struct cmd *left, struct cmd *right)        //the ; cmd
 {
   struct listcmd *cmd;
 
@@ -257,7 +261,7 @@ listcmd(struct cmd *left, struct cmd *right)
 }
 
 struct cmd*
-backcmd(struct cmd *subcmd)
+backcmd(struct cmd *subcmd)     //the & cmd
 {
   struct backcmd *cmd;
 
@@ -265,7 +269,7 @@ backcmd(struct cmd *subcmd)
   memset(cmd, 0, sizeof(*cmd));
   cmd->type = BACK;
   cmd->cmd = subcmd;
-  return (struct cmd*)cmd;
+  return (struct cmd*)cmd;      //returns a cmd which basically contains the BACK type
 }
 //PAGEBREAK!
 // Parsing
@@ -318,15 +322,15 @@ gettoken(char **ps, char *es, char **q, char **eq)
   return ret;
 }
 
-int peek(char **ps, char *es, char *toks)   //(vector of strings, string, string)
+int peek(char **ps, char *es, char *toks)   //ps is the input cmd, es is the last element and toks is what we're tring to look for
 {
   char *s;
 
-  s = *ps;
+  s = *ps;  //s contains the entire input cmd
   while(s < es && strchr(whitespace, *s))
     s++;
   *ps = s;
-  return *s && strchr(toks, *s);
+  return *s && strchr(toks, *s);        //checks if toks [;(<>& etc.] is in s and returns a boolean
 }
 
 struct cmd *parseline(char**, char*);
@@ -352,22 +356,19 @@ parsecmd(char *s)
 }
 
 struct cmd*
-parseline(char **ps, char *es)      //in parseline, we check for "&"->the background cmd.
+parseline(char **ps, char *es)      
 {
   struct cmd *cmd;
 
   cmd = parsepipe(ps, es);
-  while(peek(ps, es, "&")){
+  while(peek(ps, es, "&")){     //in parseline, we check for "&"->the background cmd.
     gettoken(ps, es, 0, 0);
     cmd = backcmd(cmd);
   }
-  if(peek(ps, es, ";")){
+  if(peek(ps, es, ";")){        //checks for the ";" operator-> the sequential command operator
     gettoken(ps, es, 0, 0);
     cmd = listcmd(cmd, parseline(ps, es));
   }
- /* if(strcmp(ps[0],"nonohup")) {
-
-    }*/
   return cmd;
 }
 
@@ -426,16 +427,17 @@ parseblock(char **ps, char *es)
 }
 
 struct cmd*
-parseexec(char **ps, char *es)
+parseexec(char **ps, char *es)      //**ps is argv essentially || *es is the last element of the string
 {
+  //char non[7] = "nonohup";
   char *q, *eq;
   int tok, argc;
   struct execcmd *cmd;
+  struct cmd *acmd;
   struct cmd *ret;
-
   if(peek(ps, es, "("))
     return parseblock(ps, es);
-
+  //acmd->type = NONOHUP;
   ret = execcmd();
   cmd = (struct execcmd*)ret;
 
@@ -446,9 +448,23 @@ parseexec(char **ps, char *es)
       break;
     if(tok != 'a')
       panic("syntax");
+      //mycode
+    if((q[0]=='n' && q[1]=='o' && q[2]=='n' && q[3]=='o' && q[4]=='h' && q[5]=='u' && q[6]=='p' && q[7]==' ') && argc == 0) {   //detects nonohup
+        q = q+8;    //removes nonohup from the input string
+        //char *line = strchr(q, ';') + 1;
+        if(fork1() == 0) {
+            //bcmd->type = NONOHUP;
+            runcmd(parsecmd(q));        //error: if nonohup is the first cmd then everything runs in this child
+        }
+        else{
+            acmd = execcmd();
+            acmd ->type = 7;
+            return acmd;     //parent
+        }
+        }
     cmd->argv[argc] = q;
     cmd->eargv[argc] = eq;
-    argc++;
+    argc++;     //number of strings (no whitespace) in a cmd
     if(argc >= MAXARGS)
       panic("too many args");
     ret = parseredirs(ret, ps, es);
@@ -456,6 +472,7 @@ parseexec(char **ps, char *es)
   cmd->argv[argc] = 0;
   cmd->eargv[argc] = 0;
   return ret;
+
 }
 
 // NUL-terminate all the counted strings.

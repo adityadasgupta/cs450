@@ -3,10 +3,14 @@
 #include "fcntl.h"
 
 int main(int argc, char *argv[]) {
-    int fd = 0;
+   /* int fd = 0;
     if(argc == 2) {     //checks for arguments for whatif
         fd = open(argv[1],O_RDONLY);    //use test.txt as test
-        }
+        if(fd<0) {
+            printf(2,"File %s does not exist\n", argv[1]);
+            exit();
+         }
+    }
 
     int chld = 0, prnt = 0;
     int n;
@@ -26,6 +30,8 @@ int main(int argc, char *argv[]) {
           wait();                           //waits for child process to finish before going to next line
         }
 	
-    }
+    }*/
+    sleep(500);
+    printf(1,"Done sleeping\n");
     exit();
 }
