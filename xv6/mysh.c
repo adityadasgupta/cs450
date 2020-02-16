@@ -2,7 +2,7 @@
 
 //Problems: Where to implement NONOHUP? Hardcode in main() or try to implement it like the other funtionalities.
 
-// We create a void function and somehow call it in main()
+// detect nonohup in parseexec
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
@@ -17,7 +17,7 @@
 
 #define MAXARGS 10
 
-struct cmd {
+struct cmd {    //used to change into different types of cmd using struct casting
   int type;
 };
 
@@ -139,8 +139,7 @@ runcmd(struct cmd *cmd)
     if(fork1() == 0)
       runcmd(bcmd->cmd);
     break;
-  
-  case NONOHUP: break;
+
   }
   
   exit();
@@ -332,7 +331,14 @@ int peek(char **ps, char *es, char *toks)   //ps is the input cmd, es is the las
   *ps = s;
   return *s && strchr(toks, *s);        //checks if toks [;(<>& etc.] is in s and returns a boolean
 }
-
+int lookup(char *str) {
+    int len = strlen(str);
+    for (int i = 0;i<len;i++) {
+        if(str[i] == ';' || str[i] == '\n')
+            return i;
+    }
+    return 0;
+}
 struct cmd *parseline(char**, char*);
 struct cmd *parsepipe(char**, char*);
 struct cmd *parseexec(char**, char*);
@@ -429,30 +435,61 @@ parseblock(char **ps, char *es)
 struct cmd*
 parseexec(char **ps, char *es)      //**ps is argv essentially || *es is the last element of the string
 {
+  int i,j;
   //char non[7] = "nonohup";
+  int len = strlen(ps[0]);
+  //char str[512];
   char *q, *eq;
   int tok, argc;
   struct execcmd *cmd;
-  struct cmd *acmd;
   struct cmd *ret;
   if(peek(ps, es, "("))
     return parseblock(ps, es);
-  //acmd->type = NONOHUP;
   ret = execcmd();
   cmd = (struct execcmd*)ret;
 
   argc = 0;
   ret = parseredirs(ret, ps, es);
+  
+    if((ps[0][0]=='n' && ps[0][1]=='o' && ps[0][2]=='n' && ps[0][3]=='o' && ps[0][4]=='h' && ps[0][5]=='u' && ps[0][6]=='p' && ps[0][7]==' ') && argc == 0) {   //detects nonohup
+      *ps = *ps + 6;
+      len = len - 9;
+      i = lookup(*ps);
+          for(j = 2;j<i;j++) {
+              ps[0][j-2]=ps[0][j];
+          }
+          ps[0][i-2] = ' ';
+          ps[0][i-1] = '&';
+      }
+   /* for(i = 0;i<len-2;i++) {
+        str[i] = ps[0][i];
+    }
+    len = strlen(str) + 1;
+    if(strchr(str,';')) {//handle if there's a semicolon
+    }
+    else {
+        for (i = 0;i<len;i++) {
+            if (str[i] == '\n') {
+                str[i] = ' '; str[i+1] = '&'; str[i+2] = '\n'; break;}
+            }
+
+        }
+        *ps = str;*/
+
+        
+        //printf(1,"%s\n",ps[0]);
+    
+
   while(!peek(ps, es, "|)&;")){
     if((tok=gettoken(ps, es, &q, &eq)) == 0)
       break;
     if(tok != 'a')
       panic("syntax");
       //mycode
-    if((q[0]=='n' && q[1]=='o' && q[2]=='n' && q[3]=='o' && q[4]=='h' && q[5]=='u' && q[6]=='p' && q[7]==' ') && argc == 0) {   //detects nonohup
-        q = q+8;    //removes nonohup from the input string
+    //removes nonohup from the input string
+        
         //char *line = strchr(q, ';') + 1;
-        if(fork1() == 0) {
+      /*  if(fork1() == 0) {
             //bcmd->type = NONOHUP;
             runcmd(parsecmd(q));        //error: if nonohup is the first cmd then everything runs in this child
         }
@@ -461,7 +498,9 @@ parseexec(char **ps, char *es)      //**ps is argv essentially || *es is the las
             acmd ->type = 7;
             return acmd;     //parent
         }
-        }
+        }*/
+    //printf(1,"%s",eq); eq points to the &
+    //eq = strchr(ps[0],'&') - 1;     //does the same thing peek does
     cmd->argv[argc] = q;
     cmd->eargv[argc] = eq;
     argc++;     //number of strings (no whitespace) in a cmd
