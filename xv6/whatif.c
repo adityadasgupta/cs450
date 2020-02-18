@@ -31,6 +31,9 @@ int main(int argc, char *argv[]) {
         }
 	
     }
+    close(chld);
+    close(prnt);
+    close(fd);
     //sleep(500);
     //printf(1,"Done sleeping\n");
     exit();
