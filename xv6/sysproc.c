@@ -83,9 +83,15 @@ int
 sys_uptime(void)
 {
   uint xticks;
-
   acquire(&tickslock);
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int 
+sys_alsonice(void) {
+    int c;
+    argint(0,&c);
+    return alsonice(c);
 }
